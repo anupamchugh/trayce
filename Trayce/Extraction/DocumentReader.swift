@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import PDFKit
+import TrayceCore
 import UIKit
 import Vision
 
@@ -25,7 +26,7 @@ nonisolated enum DocumentReader {
             text = (0..<pdf.pageCount).compactMap { pdf.page(at: $0)?.string }.joined(separator: "\n")
             image = pdf.page(at: 0).flatMap(render)
         } else {
-            image = UIImage(contentsOfFile: url.path)?.cgImage
+            image = UIImage(contentsOfFile: url.path)?.uprightCGImage
         }
         guard let image else { throw ReadError.unreadable }
 
@@ -38,6 +39,7 @@ nonisolated enum DocumentReader {
     }
 
     static func render(_ page: PDFPage) -> CGImage? {
+        // Scanned PDFs have no text layer; their first page is read by Vision.
         let box = page.bounds(for: .mediaBox)
         let scale = 2000 / max(box.width, box.height)
         return page.thumbnail(of: CGSize(width: box.width * scale, height: box.height * scale), for: .mediaBox).cgImage
@@ -52,9 +54,22 @@ nonisolated enum DocumentReader {
     static func detectBarcode(_ image: CGImage) async throws -> (payload: String?, crop: CGImage?)? {
         var request = DetectBarcodesRequest()
         request.symbologies = [.pdf417, .aztec, .qr]
-        guard let observation = try await request.perform(on: image).first else { return nil }
+        // Prefer a boarding pass over any marketing QR code on the same page.
+        let found = try await request.perform(on: image)
+        guard let observation = found.first(where: { $0.payloadString.flatMap(BCBPParser.parse) != nil }) ?? found.first
+        else { return nil }
         let size = CGSize(width: image.width, height: image.height)
         let rect = observation.boundingBox.toImageCoordinates(size, origin: .upperLeft).insetBy(dx: -16, dy: -16)
         return (observation.payloadString, image.cropping(to: rect))
+    }
+}
+
+extension UIImage {
+    /// Camera photos carry their rotation in metadata, which `cgImage` drops; Vision needs the pixels upright.
+    nonisolated var uprightCGImage: CGImage? {
+        guard imageOrientation != .up else { return cgImage }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in draw(at: .zero) }.cgImage
     }
 }

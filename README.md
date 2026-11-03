@@ -12,8 +12,8 @@ I changed a booking on MakeMyTrip. The PDF I'd been sent on WhatsApp still showe
 
 | Moment | MakeMyTrip + WhatsApp | Trayce |
 |---|---|---|
-| Booking changed | The old PDF stays in chat looking just as valid | Same PNR with a newer issue date: the old copy is marked **stale** and the changed fields are shown |
-| Many sources | Booking app, airline email, agent's WhatsApp, screenshots | One trip; each fact shows which document it came from |
+| Booking changed | The old PDF stays in chat looking just as valid | Same PNR and leg with a newer issue date: the old copy is marked **stale** and the changed fields are shown. Copies without issue dates that disagree are flagged **Check** |
+| Many sources | Booking app, airline email, agent's WhatsApp, screenshots | One trip per leg, listing every document behind it, current or stale |
 | No signal at the gate | Needs the network or a lot of scrolling | Stored on the device; the airline's own barcode is cropped from its PDF |
 | Security | Nothing | Pack check → tray plan → Lock Screen Live Activity |
 | Privacy | Documents go through servers | PDFKit, Vision and Foundation Models run on the iPhone |
@@ -23,7 +23,7 @@ I changed a booking on MakeMyTrip. The PDF I'd been sent on WhatsApp still showe
 | Feature | Apple APIs |
 |---|---|
 | Read any booking | PDFKit `PDFPage.string`, Vision `RecognizeDocumentsRequest`, `DetectBarcodesRequest` |
-| Fill a typed booking | Foundation Models `@Generable`, checked against the text by code, with a regex fallback |
+| Fill a typed booking | A pattern reader first; for layouts it can't read, Foundation Models `@Generable`. Each model field (PNR, flight, airports in order, date and time, issue date) must appear in the text, or the answer is rejected |
 | Newest copy wins | `TrayceCore.SupersedeResolver` (pure Swift, unit-tested) |
 | Boarding pass data | IATA BCBP parser (`TrayceCore.BCBPParser`) |
 | Pack check | Vision `GenerateForegroundInstanceMaskRequest` cut-outs, Foundation Models image `Attachment`, `RecognizeTextRequest` for mAh/Wh/ml, `ClassifyImageRequest` fallback |
@@ -43,6 +43,7 @@ I changed a booking on MakeMyTrip. The PDF I'd been sent on WhatsApp still showe
 - Apple has no public flight-status API. Gate, terminal and delay come from your documents; adsb.lol gives aircraft positions only.
 - India's liquids rule for domestic flights varies by airport. Every rule is shown as advice, with its source and date. Security staff have the final say.
 - PencilKit/PaperKit strokes carry no identity. Trayce never reads anyone's Apple Account.
+- Not built yet (in the spec): a Share Extension (today you use "Open in Trayce" or the file picker), DataDetection, reading every page of a scanned PDF (page 1 only today), and tap-to-fix segmentation.
 
 ## Build
 

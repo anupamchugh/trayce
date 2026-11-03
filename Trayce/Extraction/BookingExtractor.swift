@@ -34,12 +34,16 @@ nonisolated enum BookingExtractor {
 
     static var modelIsAvailable: Bool { SystemLanguageModel.default.availability == .available }
 
+    /// The pattern reader is the umpire: when it finds the booking, its fields are used as they are.
+    /// The model only reads layouts the patterns can't, and its answer is checked against the text.
     static func extract(from text: String) async -> Extraction? {
-        if modelIsAvailable, let booking = try? await extractWithModel(text) {
-            return Extraction(booking: booking, method: "with Apple Intelligence on this iPhone")
+        if let booking = BookingTextParser.parse(text, issuedFallback: nil) {
+            return Extraction(booking: booking, method: "with pattern rules on this iPhone")
         }
-        return BookingTextParser.parse(text, issuedFallback: nil)
-            .map { Extraction(booking: $0, method: "with pattern rules on this iPhone") }
+        if modelIsAvailable, let booking = try? await extractWithModel(text) {
+            return Extraction(booking: booking, method: "with Apple Intelligence on this iPhone, checked against the text")
+        }
+        return nil
     }
 
     static func extractWithModel(_ text: String) async throws -> Booking? {
@@ -53,12 +57,36 @@ nonisolated enum BookingExtractor {
                                                  options: GenerationOptions(sampling: .greedy))
         let e = response.content
         // The model fills fields; code checks them. A PNR the text doesn't contain is rejected.
-        guard e.pnr.count == 6, text.contains(e.pnr), text.contains(e.flightNumber),
-              text.contains(e.origin), text.contains(e.destination),
-              let departure = parseDate(e.departure) else { return nil }
+        guard e.pnr.count == 6, hasWord(e.pnr, in: text),
+              !e.flightNumber.isEmpty, hasWord(e.flightNumber, in: text),
+              let o = wordRange(e.origin, in: text), let d = wordRange(e.destination, in: text), o.lowerBound < d.lowerBound,
+              let departure = parseDate(e.departure), printed(departure, in: text)
+        else { return nil }
+        // An issue date decides which copy wins, so keep it only if it is printed in the text.
+        let issued = parseDate(e.issued).flatMap { printed($0, in: text) ? $0 : nil }
         return Booking(pnr: e.pnr.uppercased(), carrier: e.carrier.nilIfEmpty, flightNumber: e.flightNumber,
                        origin: e.origin.uppercased(), destination: e.destination.uppercased(), departure: departure,
-                       seat: e.seat.nilIfEmpty, terminal: e.terminal.nilIfEmpty, issuedAt: parseDate(e.issued))
+                       seat: e.seat.nilIfEmpty.flatMap { hasWord($0, in: text) ? $0 : nil },
+                       terminal: e.terminal.nilIfEmpty, issuedAt: issued)
+    }
+
+    static func wordRange(_ word: String, in text: String) -> Range<String.Index>? {
+        guard !word.isEmpty else { return nil }
+        return text.range(of: #"\b\#(NSRegularExpression.escapedPattern(for: word))\b"#, options: [.regularExpression, .caseInsensitive])
+    }
+
+    static func hasWord(_ word: String, in text: String) -> Bool { wordRange(word, in: text) != nil }
+
+    /// The day number and the clock time (24 h or 12 h) both appear in the text.
+    static func printed(_ date: Date, in text: String) -> Bool {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Kolkata")!
+        let c = calendar.dateComponents([.day, .hour, .minute], from: date)
+        guard let day = c.day, let hour = c.hour, let minute = c.minute else { return false }
+        let h12 = hour % 12 == 0 ? 12 : hour % 12
+        let times = [String(format: "%02d:%02d", hour, minute), String(format: "%d:%02d", hour, minute),
+                     String(format: "%d:%02d", h12, minute)]
+        return hasWord(String(day), in: text) && times.contains { text.contains($0) }
     }
 
     static func parseDate(_ s: String) -> Date? {

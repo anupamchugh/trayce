@@ -45,6 +45,39 @@ private func doc(pnr: String = "X7K2LM", departs: String, issued: String?, recei
         #expect(trips.allSatisfy { $0.stale.isEmpty })
     }
 
+    @Test func returnLegWithSamePNRIsItsOwnTrip() {
+        var back = doc(departs: "2026-11-18 20:00", issued: "2026-11-02 18:40", received: "2026-11-02 19:00")
+        back.booking.origin = "DEL"
+        back.booking.destination = "BLR"
+        let out = doc(departs: "2026-11-16 07:40", issued: "2026-10-28 10:00", received: "2026-10-28 10:05")
+        let trips = SupersedeResolver.trips(from: [out, back])
+        #expect(trips.count == 2)
+        #expect(trips.allSatisfy { $0.stale.isEmpty })
+        #expect(trips.map(\.current.booking.origin) == ["BLR", "DEL"])
+    }
+
+    @Test func mixedIssuedAndReceivedUsesReceivedAt() {
+        // The re-issue prints an issue date; the old copy, shared again today, prints none.
+        let reissue = doc(departs: "2026-11-16 07:40", issued: "2026-11-02 18:40", received: "2026-11-02 19:00")
+        let reopened = doc(departs: "2026-11-14 18:15", issued: nil, received: "2026-11-03 09:00")
+        let trip = SupersedeResolver.trips(from: [reissue, reopened])[0]
+        // Without two issue dates, arrival order decides, and the conflict is surfaced.
+        #expect(trip.current.id == reopened.id)
+        #expect(trip.needsReview)
+    }
+
+    @Test func bothIssuedNeedsNoReview() {
+        let old = doc(departs: "2026-11-14 18:15", issued: "2026-10-28 10:00", received: "2026-11-03 09:00")
+        let new = doc(departs: "2026-11-16 07:40", issued: "2026-11-02 18:40", received: "2026-11-01 09:00")
+        #expect(!SupersedeResolver.trips(from: [old, new])[0].needsReview)
+    }
+
+    @Test func equalRecencyIsDeterministic() {
+        let a = doc(departs: "2026-11-16 07:40", issued: "2026-11-02 18:40", received: "2026-11-02 19:00")
+        let b = doc(departs: "2026-11-16 07:40", issued: "2026-11-02 18:40", received: "2026-11-02 19:00")
+        #expect(SupersedeResolver.trips(from: [a, b])[0].current.id == SupersedeResolver.trips(from: [b, a])[0].current.id)
+    }
+
     @Test func identicalDocsProduceNoChanges() {
         let a = doc(departs: "2026-11-16 07:40", issued: "2026-11-02 18:40", received: "2026-11-02 19:00")
         let b = doc(departs: "2026-11-16 07:40", issued: "2026-11-02 18:40", received: "2026-11-03 09:00")
@@ -77,6 +110,39 @@ private func doc(pnr: String = "X7K2LM", departs: String, issued: String?, recei
         #expect(b.seat == "12C")
         #expect(b.terminal == "T1")
         #expect(b.issuedAt == date("2026-11-02 18:40"))
+    }
+
+    @Test func parsesOtherLayoutsAnd12HourTime() throws {
+        let text = """
+            PNR No.: x7k2lm
+            FLIGHT NO: 6E-2134
+            Bengaluru (BLR) to Delhi (DEL)
+            DEPARTURE: 14-Nov-2026, 6:15 PM
+            """
+        let b = try #require(BookingTextParser.parse(text, issuedFallback: nil))
+        #expect(b.pnr == "X7K2LM")
+        #expect(b.carrier == "6E")
+        #expect(b.flightNumber == "2134")
+        #expect(b.origin == "BLR")
+        #expect(b.destination == "DEL")
+        #expect(b.departure == date("2026-11-14 18:15"))
+    }
+
+    @Test func flightWithoutCarrierIsNotSplit() {
+        let text = "PNR: X7K2LM\nFlight 2134 BLR → DEL\nDeparture: 16 Nov 2026 07:40"
+        #expect(BookingTextParser.parse(text, issuedFallback: nil) == nil)
+    }
+
+    @Test func passengerStopsAtNextField() throws {
+        let b = try #require(BookingTextParser.parse(Self.ticket.replacingOccurrences(of: "Passenger: Test Traveller", with: "Passenger: Test Traveller   Seat: 12C"), issuedFallback: nil))
+        #expect(b.passenger == "Test Traveller")
+    }
+
+    @Test func sampleBoardingPassParses() throws {
+        let p = try #require(BCBPParser.parse("M1TRAVELLER/TEST      EX7K2LM BLRDEL6E 2134 320Y012C0041 100"))
+        #expect(p.seat == "12C")
+        #expect(p.sequence == "0041")
+        #expect(p.pnr == "X7K2LM")
     }
 
     @Test func parserRejectsTextWithoutPNR() {
@@ -146,6 +212,20 @@ private func doc(pnr: String = "X7K2LM", departs: String, issued: String?, recei
     @Test func rulesCarrySourceAndDate() {
         #expect(rules.asOf == "2026-10")
         #expect(rules.source.host() != nil)
+    }
+
+    @Test func labelPrefersCellVoltageOverInput() {
+        let n = LabelNumbers("Input 5V⎓2A Output 5V 20,000mAh 3.7V")
+        #expect(n.mAh == 20_000)
+        #expect(n.volts == 3.7)
+        #expect(n.wattHours == nil)
+    }
+
+    @Test func labelWhIsCaseSensitiveWord() {
+        #expect(LabelNumbers("12 White cable").wattHours == nil)
+        #expect(LabelNumbers("Rated 74Wh").wattHours == 74)
+        #expect(LabelNumbers("150 ml shampoo").millilitres == 150)
+        #expect(LabelNumbers("150 mlx").millilitres == nil)
     }
 
     @Test func cabinFitReportsDepthOverage() {

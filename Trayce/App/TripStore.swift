@@ -11,7 +11,9 @@ final class TripStore {
     var lastMessage: String?
 
     var trips: [Trip] { SupersedeResolver.trips(from: documents) }
-    var nextTrip: Trip? { trips.first { $0.current.booking.departure > .now.addingTimeInterval(-6 * 3600) } ?? trips.last }
+    /// The next flight that hasn't left yet (with a 1-hour grace for delays), or none.
+    var nextTrip: Trip? { trips.first { $0.current.booking.departure > .now.addingTimeInterval(-3600) } }
+    private var packFlags: [String] = []
 
     private let folder: URL
     private var indexURL: URL { folder.appending(path: "documents.json") }
@@ -46,18 +48,29 @@ final class TripStore {
                 lastMessage = "Couldn't find a PNR, flight and date in \(url.lastPathComponent)."
                 return
             }
+            // The same booking shared again (same facts, same issue date) is not a new copy.
+            if documents.contains(where: { $0.booking == extraction.booking }) {
+                lastMessage = "Already saved: \(extraction.booking.pnr) \(extraction.booking.flightLabel), nothing changed."
+                return
+            }
             let id = UUID()
+            // Keep a barcode only if it belongs to this booking.
+            let payload = read.barcodePayload.flatMap { p in
+                BCBPParser.parse(p).map { $0.pnr == extraction.booking.pnr } == true ? p : nil
+            }
             let document = TripDocument(id: id, fileName: url.lastPathComponent, source: source,
                                         receivedAt: receivedAt, booking: extraction.booking,
-                                        barcodePayload: read.barcodePayload)
+                                        barcodePayload: payload)
             try FileManager.default.copyItem(at: url, to: fileURL(for: document))
-            if let crop = read.barcodeImage {
+            if payload != nil, let crop = read.barcodeImage {
                 try UIImage(cgImage: crop).pngData()?.write(to: folder.appending(path: "\(id.uuidString)-barcode.png"))
             }
             documents.append(document)
             save()
-            let trip = trips.first { $0.id == document.booking.pnr }
-            if let trip, trip.current.id != id {
+            let trip = trips.first { $0.id == SupersedeResolver.legKey(document.booking) }
+            if let trip, trip.needsReview {
+                lastMessage = "These copies disagree and don't all show an issue date. Check \(document.booking.pnr) with the airline."
+            } else if let trip, trip.current.id != id {
                 lastMessage = "Saved as an older copy. A newer document for \(document.booking.pnr) already exists."
             } else if let trip, !trip.changes.isEmpty {
                 lastMessage = "This replaces an older copy: " + trip.changes.map { "\($0.field) \($0.old) → \($0.new)" }.joined(separator: ", ")
@@ -77,7 +90,10 @@ final class TripStore {
     }
 
     func removeAll() {
-        for d in documents { try? FileManager.default.removeItem(at: fileURL(for: d)) }
+        for d in documents {
+            try? FileManager.default.removeItem(at: fileURL(for: d))
+            try? FileManager.default.removeItem(at: folder.appending(path: "\(d.id.uuidString)-barcode.png"))
+        }
         documents = []
         save()
     }
@@ -87,12 +103,17 @@ final class TripStore {
         publishWidgetSnapshot()
     }
 
-    func publishWidgetSnapshot(packFlags: [String] = []) {
-        guard let trip = nextTrip else { return }
+    /// Pass new pack flags from the tray plan; leave nil to keep the last ones.
+    func publishWidgetSnapshot(packFlags flags: [String]? = nil) {
+        if let flags { packFlags = flags }
+        guard let trip = nextTrip else {
+            AppGroup.defaults.removeObject(forKey: WidgetSnapshot.key)
+            return
+        }
         let b = trip.current.booking
         WidgetSnapshot(route: "\(b.origin) → \(b.destination)",
                        dayText: b.departure.formatted(.dateTime.weekday().day().month()),
                        departureText: b.departure.formatted(date: .omitted, time: .shortened),
-                       gate: b.gate, seat: b.seat, isCurrent: true, packFlags: packFlags).save()
+                       gate: b.gate, seat: b.seat, isCurrent: !trip.needsReview, packFlags: packFlags).save()
     }
 }

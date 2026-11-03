@@ -13,7 +13,7 @@ struct TrayceApp: App {
                 .environment(bag)
                 // "Open in Trayce" from the WhatsApp or Mail share sheet lands here.
                 .onOpenURL { url in
-                    Task { await store.importFile(at: url, source: .whatsapp) }
+                    Task { await store.importFile(at: url, source: .files) }
                 }
         }
     }

@@ -63,8 +63,10 @@ private struct FlightCard: View {
             HStack {
                 Text("Flight \(b.flightLabel)").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 Spacer()
-                Text("CURRENT").font(.caption.weight(.bold)).foregroundStyle(.green)
-                    .padding(.horizontal, 10).padding(.vertical, 5).background(.green.opacity(0.15), in: .capsule)
+                Text(trip.needsReview ? "CHECK" : "CURRENT").font(.caption.weight(.bold))
+                    .foregroundStyle(trip.needsReview ? .orange : .green)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background((trip.needsReview ? Color.orange : .green).opacity(0.15), in: .capsule)
             }
             HStack(alignment: .lastTextBaseline) {
                 VStack(alignment: .leading) {
@@ -98,7 +100,9 @@ private struct FlightCard: View {
                     ChangesView(trip: trip)
                 } label: {
                     Label {
-                        Text("\(trip.changes.map(\.field).joined(separator: " and ")) changed. \(trip.stale.count) older copy marked stale.")
+                        Text(trip.needsReview
+                             ? "Your copies disagree on \(trip.changes.map(\.field).joined(separator: " and ")), and not all show an issue date. Confirm with the airline."
+                             : "\(trip.changes.map(\.field).joined(separator: " and ")) changed. \(trip.stale.count) older copy marked stale.")
                             .multilineTextAlignment(.leading)
                     } icon: {
                         Image(systemName: "exclamationmark.triangle.fill")

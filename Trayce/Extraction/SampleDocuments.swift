@@ -33,7 +33,7 @@ enum SampleDocuments {
             Seat 12C   Gate 14
             Issued: 02 Nov 2026 18:40
             """
-        let bcbp = "M1TRAVELLER/TEST       EX7K2LM BLRDEL6E 2134 320Y012C0041 100"
+        let bcbp = "M1TRAVELLER/TEST      EX7K2LM BLRDEL6E 2134 320Y012C0041 100"
         return [
             Sample(url: write(old, name: "E-Ticket_X7K2LM.pdf", barcode: nil), source: .whatsapp,
                    receivedAt: .now.addingTimeInterval(-6 * 86_400)),

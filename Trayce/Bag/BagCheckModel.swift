@@ -45,7 +45,7 @@ final class BagCheckModel {
     }
 
     func analyse(_ image: UIImage) async {
-        guard let cg = image.cgImage else { return }
+        guard let cg = image.uprightCGImage else { return }
         isWorking = true
         defer { isWorking = false }
         do {

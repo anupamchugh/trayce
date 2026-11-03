@@ -65,7 +65,4 @@ public struct TripDocument: Codable, Identifiable, Hashable, Sendable {
         self.booking = booking
         self.barcodePayload = barcodePayload
     }
-
-    /// Which copy is newer: the issue date printed on it, else when it arrived.
-    public var recency: Date { booking.issuedAt ?? receivedAt }
 }

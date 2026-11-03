@@ -71,31 +71,3 @@ nonisolated enum ItemVision {
         return labels.lazy.compactMap { label in map.first { label.contains($0.0) }?.1 }.first
     }
 }
-
-/// Numbers printed on a label, such as "20000mAh 3.7V 74Wh" or "150 ml".
-nonisolated struct LabelNumbers {
-    var mAh: Double?
-    var volts: Double?
-    var wattHours: Double?
-    var millilitres: Double?
-
-    init(_ text: String) {
-        func value(_ unit: String) -> Double? {
-            BookingTextParserBridge.first(#"(\d[\d,\.]*)\s*"# + unit, in: text)
-                .flatMap { Double($0.replacingOccurrences(of: ",", with: "")) }
-        }
-        mAh = value("mAh")
-        volts = value("V\\b")
-        wattHours = value("Wh")
-        millilitres = value("ml")
-    }
-}
-
-nonisolated enum BookingTextParserBridge {
-    static func first(_ pattern: String, in text: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-              let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let r = Range(m.range(at: 1), in: text) else { return nil }
-        return String(text[r])
-    }
-}
