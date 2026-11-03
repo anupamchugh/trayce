@@ -1,6 +1,20 @@
-# Airport Escort — MVP design
+# Trayce (Airport Escort) — MVP design
 
-Date: 2026-11-03 · Status: draft for owner review · License intent: open source (public repo)
+Date: 2026-11-03 · Status: approved by owner 2026-11-03 · License: MIT, public repo `trayce`
+
+Name: **Trayce**, from *tray* (security trays) and *trace* (always the latest version of your trip).
+
+## 0. Why this beats MakeMyTrip + WhatsApp
+
+| Moment | MakeMyTrip + WhatsApp today | Trayce |
+|---|---|---|
+| Booking changed | A new PDF arrives somewhere; the old PDF stays in chat looking just as valid | Same PNR, newer issue date → the old copy is marked **stale** and the changed fields are shown |
+| Several sources | MMT app, airline email, agent's WhatsApp, screenshots: four places | One trip, built from every document you share in; each fact shows which document it came from |
+| No signal at the gate | MMT needs the network; WhatsApp needs scrolling | Everything is stored on the device; the boarding barcode is cropped from the airline's own PDF |
+| Security | Nothing helps | A pack check done at home gives a tray plan, pinned to the Lock Screen |
+| Privacy | Documents go through servers | Reading, extraction and the AI run on the iPhone (PDFKit, Vision, Foundation Models) |
+
+Trayce doesn't replace booking. It is the one place that reconciles what MakeMyTrip, the airline and WhatsApp each sent you.
 
 Mockups: the "Airport Escort MVP" design canvas (11 screens, 3 rows).
 

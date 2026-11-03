@@ -1,0 +1,8 @@
+{
+  "country": "IN",
+  "asOf": "2026-10",
+  "source": "https://www.newdelhiairport.in/security-baggage/",
+  "powerBankCabinMaxWh": 100,
+  "powerBankApprovalMaxWh": 160,
+  "liquidMaxMl": 100
+}
