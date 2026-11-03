@@ -43,7 +43,15 @@ struct AskView: View {
             .background(.bar)
         }
         .navigationTitle("Ask Trayce")
-        .onAppear { if availability == .available { currentSession().prewarm() } }
+        .onAppear {
+            guard availability == .available else { return }
+            currentSession().prewarm()
+            // Screenshot/demo hook: ask the first suggestion on launch.
+            if ProcessInfo.processInfo.arguments.contains("-demoAsk"), turns.isEmpty {
+                question = "Can I take my 20,000 mAh power bank?"
+                ask()
+            }
+        }
     }
 
     /// One session for the whole conversation, so follow-up questions keep their context.

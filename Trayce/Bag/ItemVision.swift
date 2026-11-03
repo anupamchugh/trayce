@@ -11,7 +11,13 @@ enum ItemGuess: String {
 
 nonisolated enum ItemVision {
     /// Vision cuts every foreground object out of a flat-lay photo, one image per item.
+    /// Where the mask model can't run (the Simulator, older chips), a plain contour split does it.
     static func cutOutItems(from image: CGImage) async throws -> [CGImage] {
+        if let items = try? await maskedItems(from: image), !items.isEmpty { return items }
+        return ContourSplitter.items(in: image)
+    }
+
+    static func maskedItems(from image: CGImage) async throws -> [CGImage] {
         guard let observation = try await GenerateForegroundInstanceMaskRequest().perform(on: image) else { return [] }
         let handler = ImageRequestHandler(image)
         let context = CIContext()

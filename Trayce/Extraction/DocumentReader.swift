@@ -34,7 +34,8 @@ nonisolated enum DocumentReader {
         if text.trimmingCharacters(in: .whitespacesAndNewlines).count < 20 {
             text = try await recognizeDocument(image)
         }
-        let barcode = try await detectBarcode(image)
+        // A barcode is a bonus: if Vision can't look for one (the Simulator can't), still read the booking.
+        let barcode = try? await detectBarcode(image)
         return Result(text: text, barcodePayload: barcode?.payload, barcodeImage: barcode?.crop)
     }
 

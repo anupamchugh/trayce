@@ -21,7 +21,7 @@ struct ChangesView: View {
                     }
                 }
             } header: {
-                Text("PNR \(trip.id) · \(trip.all.count) documents")
+                Text("PNR \(trip.current.booking.pnr) · \(trip.current.booking.origin) → \(trip.current.booking.destination) · \(trip.all.count) documents")
             }
 
             Section("Documents") {

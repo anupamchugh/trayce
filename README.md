@@ -4,7 +4,15 @@
 
 Trayce is an open-source iPhone app (iOS 27). It brings together the booking PDFs and screenshots you get from MakeMyTrip, airlines and WhatsApp, works out which copy is current, and plans your security trays from a photo of what you packed. It's built only on Apple frameworks, and everything is read on the device.
 
-> Status: MVP demo. It builds and runs in the iOS Simulator. The camera, Apple Intelligence and LiDAR paths need a real iPhone.
+> Status: MVP demo, running in the iOS 27 Simulator (screens below, 3 Nov 2026). The camera, boarding barcode reading and the LiDAR scan need a real iPhone.
+
+| Trip | What changed | Pack check | Ask Trayce |
+|---|---|---|---|
+| ![Trip](docs/screens/trip.png) | ![What changed](docs/screens/changes.png) | ![Pack check](docs/screens/bag.png) | ![Ask](docs/screens/ask.png) |
+
+| Your plane | Live traffic | Bag size | Tray markup |
+|---|---|---|---|
+| ![Plane](docs/screens/plane.png) | ![Traffic](docs/screens/traffic.png) | ![Size](docs/screens/size.png) | ![Markup](docs/screens/markup.png) |
 
 ## Why it exists
 
@@ -58,6 +66,10 @@ Core logic tests (macOS, no simulator needed):
 ```bash
 swift test --package-path Packages/TrayceCore
 ```
+
+Demo launch arguments: `-demoSample` (load the sample trip), `-demoBag` (run the sample pack check), `-demoTab 0|1|2`, `-demoScreen changes|boarding|tray|plane|markup|ask|size|traffic`, `-demoAsk`.
+
+Where Vision's neural models can't run (the Simulator, older chips), pack check falls back to a plain contour split, and barcode reading is skipped without blocking the import.
 
 In the app: **Trip → + → Load sample trip** imports two synthetic e-tickets (an older WhatsApp copy and a re-issue) and shows the stale-copy flow. **Bag → Sample** runs Vision on a drawn flat lay.
 

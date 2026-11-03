@@ -15,10 +15,8 @@ struct MarkupView: View {
             }
             .pickerStyle(.segmented)
             .padding()
-            ZStack {
-                Image(uiImage: SampleFlatLay.render()).resizable().scaledToFit()
-                PaperMarkupRepresentable()
-            }
+            PaperMarkupRepresentable()
+                .aspectRatio(4 / 3, contentMode: .fit)
             Text("Drawing as \(author). Trayce never reads anyone's Apple Account; a shared session would label marks by the participant who joined.")
                 .font(.footnote).foregroundStyle(.secondary).padding()
         }
@@ -38,9 +36,13 @@ final class MarkupHostController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .clear
-        let paper = PaperMarkupViewController(markup: PaperMarkup(bounds: view.bounds), supportedFeatureSet: .latest)
-        paper.view.backgroundColor = .clear
+        // The tray photo is an element of the markup itself, so marks sit on it and travel with it.
+        let bounds = CGRect(x: 0, y: 0, width: 400, height: 300)
+        var markup = PaperMarkup(bounds: bounds)
+        if let photo = ImageMarkup(image: SampleFlatLay.render(), frame: bounds) {
+            markup.subelements.append(photo)
+        }
+        let paper = PaperMarkupViewController(markup: markup, supportedFeatureSet: .latest)
         addChild(paper)
         paper.view.frame = view.bounds
         paper.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]

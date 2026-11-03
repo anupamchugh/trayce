@@ -12,18 +12,18 @@ struct BagCheckView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Lay what you're packing flat, in one layer, with space between items. Trayce can only judge what it sees; it can't see inside a closed bag.")
-                        .font(.subheadline)
-                    HStack {
-                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                            Button("Take photo", systemImage: "camera") { showingCamera = true }
-                        }
-                        PhotosPicker("Choose photo", selection: $pick, matching: .images)
-                        Button("Sample", systemImage: "wand.and.stars") {
-                            Task { await bag.analyse(SampleFlatLay.render()) }
-                        }
+                    // One action per row: buttons sharing a List row share one tap target.
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button("Take a photo of your items", systemImage: "camera") { showingCamera = true }
                     }
-                    .buttonStyle(.bordered)
+                    PhotosPicker(selection: $pick, matching: .images) {
+                        Label("Choose from Photos", systemImage: "photo.on.rectangle")
+                    }
+                    Button("Try the sample flat lay", systemImage: "wand.and.stars") {
+                        Task { await bag.analyse(SampleFlatLay.render()) }
+                    }
+                } footer: {
+                    Text("Lay what you're packing flat, in one layer, with space between items. Trayce can only judge what it sees; it can't see inside a closed bag.")
                 }
                 if bag.isWorking { ProgressView("Looking at your items on this iPhone…") }
                 if let message = bag.message { Text(message).font(.footnote).foregroundStyle(.secondary) }

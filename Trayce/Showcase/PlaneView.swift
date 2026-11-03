@@ -33,6 +33,7 @@ struct PlaneView: View {
         }
         .navigationTitle("Your plane")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
     static func airliner(seatRow: Int) -> Entity {
@@ -68,6 +69,10 @@ struct PlaneView: View {
                                materials: [UnlitMaterial(color: .systemOrange)])
         seat.position = [0.02, 0.04, -length / 2 + 0.06 + (row - 1) / 29 * (length - 0.12)]
         root.addChild(seat)
+
+        // A three-quarter view from above, like a model on a desk, instead of nose-on.
+        root.orientation = simd_quatf(angle: 0.5, axis: [1, 0, 0]) * simd_quatf(angle: -.pi / 2 + 0.6, axis: [0, 1, 0])
+        root.scale = [1.6, 1.6, 1.6]
         return root
     }
 }
