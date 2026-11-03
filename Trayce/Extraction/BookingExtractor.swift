@@ -53,7 +53,9 @@ nonisolated enum BookingExtractor {
                                                  options: GenerationOptions(sampling: .greedy))
         let e = response.content
         // The model fills fields; code checks them. A PNR the text doesn't contain is rejected.
-        guard e.pnr.count == 6, text.contains(e.pnr), let departure = parseDate(e.departure) else { return nil }
+        guard e.pnr.count == 6, text.contains(e.pnr), text.contains(e.flightNumber),
+              text.contains(e.origin), text.contains(e.destination),
+              let departure = parseDate(e.departure) else { return nil }
         return Booking(pnr: e.pnr.uppercased(), carrier: e.carrier.nilIfEmpty, flightNumber: e.flightNumber,
                        origin: e.origin.uppercased(), destination: e.destination.uppercased(), departure: departure,
                        seat: e.seat.nilIfEmpty, terminal: e.terminal.nilIfEmpty, issuedAt: parseDate(e.issued))

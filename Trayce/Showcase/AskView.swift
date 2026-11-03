@@ -43,23 +43,39 @@ struct AskView: View {
             .background(.bar)
         }
         .navigationTitle("Ask Trayce")
+        .onAppear { if availability == .available { currentSession().prewarm() } }
+    }
+
+    /// One session for the whole conversation, so follow-up questions keep their context.
+    private func currentSession() -> LanguageModelSession {
+        if let session { return session }
+        let new = LanguageModelSession(
+            tools: [GetTripTool(summary: tripSummary), CheckItemTool()],
+            instructions: """
+                You are Trayce, an airport companion. Use getTrip for anything about the traveller's flight \
+                and checkItemRule for whether an item may be carried. Never state a rule, time or number \
+                the tools didn't return. Answer in two or three short sentences.
+                """)
+        session = new
+        return new
     }
 
     private func ask() {
         let q = question.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty, availability == .available else { return }
+        guard !q.isEmpty, !thinking, availability == .available else { return }
         question = ""
         thinking = true
-        let session = session ?? LanguageModelSession(
-            tools: [GetTripTool(summary: tripSummary), CheckItemTool()],
-            instructions: """
-                You are Trayce, an airport companion. Use getTrip for anything about the traveller's flight \
-                and checkItemRule for whether an item may be carried. Never state a rule the tool didn't return. \
-                Answer in two or three short sentences.
-                """)
-        self.session = session
+        let session = currentSession()
         Task {
-            let answer = (try? await session.respond(to: q).content) ?? "Sorry, I couldn't answer that."
+            let answer: String
+            do {
+                answer = try await session.respond(to: q).content
+            } catch LanguageModelError.contextSizeExceeded {
+                self.session = nil
+                answer = "That conversation got too long, so I started a fresh one. Please ask again."
+            } catch {
+                answer = "Sorry, I couldn't answer that on this iPhone right now."
+            }
             turns.append((q, answer))
             thinking = false
         }
