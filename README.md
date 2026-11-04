@@ -6,6 +6,8 @@ Trayce is an open-source iPhone app (iOS 27). It brings together the booking PDF
 
 > Status: MVP demo, running in the iOS 27 Simulator (screens below, 3 Nov 2026). The camera, boarding barcode reading and the LiDAR scan need a real iPhone.
 
+**Watch it run:** a [21-second demo](docs/demo-2026-11-04/trayce-demo-2026-11-04.mp4) recorded on an iPhone 17 Simulator (iOS 27.2) with the sample trip: trip, what changed, tray plan, plane, Ask, pack check.
+
 | Trip | What changed | Pack check | Ask Trayce |
 |---|---|---|---|
 | ![Trip](docs/screens/trip.png) | ![What changed](docs/screens/changes.png) | ![Pack check](docs/screens/bag.png) | ![Ask](docs/screens/ask.png) |
